@@ -1,0 +1,5 @@
+Hello World!
+This is an example of some "pure" text.
+It should pass through the STAR tool unchanged.
+'More text'
+Some " weird ' symbols \n that \t should ~ still ` just ``` pass ''' right {]| through

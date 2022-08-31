@@ -1,7 +1,9 @@
+This is a document for brainstorming and ideas and does not necessarily reflect the actual code
+
 Good resource on parsers:
 https://tomassetti.me/parsing-in-python/
 
-What the input should look like:
+What the input should (approximately) look like:
 ```
 <SUB* "where_we_are" => "World">
 Hello where_we_are!
@@ -16,7 +18,7 @@ There are three things that matter in the world:
 <*SUB>
 
 <RPT* i = 1; i < 4; i = i + 1; "\n">
-	<SUB* "$i" => {i:02d}>
+	<SUB* "$i" => f'{i:02d}'>
 I have now said "cat" $i time(s).
 		<RPT* j = 0; j < i; j = j + 1; " ">
 meow
