@@ -1,0 +1,1 @@
+Idea: Take a template with markers for text substitution and text repetition and generate a final piece of text from it
