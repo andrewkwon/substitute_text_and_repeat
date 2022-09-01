@@ -1,5 +1,16 @@
 import argparse
 import sys
+import parsy
+
+# Main function which gets called to run the script
+def main():
+    args = get_args()
+    intermediate = parse_to_intermediate()
+    # If intermediate flag is set, print the intermediate python code
+    if args.intermediate:
+        print(intermediate)
+        print()
+    exec_intermediate(intermediate)
 
 # Get command line arguments
 def get_args():
@@ -10,10 +21,10 @@ def get_args():
     <SUB* 'old_string_1' => 'new_string', 'old_string_2' => f'f-string'>
     Text on which to perform substitution
     <*SUB>
-    where the replacement for the old string can be a regular string literal or an f-string.
+    where the replacement for the old string can be any string literal.
 
     Repeat commands are of the form
-    <RPT* {init} {condition} {increment} delimiter>
+    <RPT* `init` `condition` `increment` delimiter>
     Text we want to repeat
     <*RPT>
     where init, condition, and increment are all snippets of python code and the delimiter is any string literal.
@@ -35,6 +46,11 @@ def parse_to_intermediate():
     source = source.encode()
     code = 'import sys\n'
     code += f'sys.stdout.buffer.write({source})'
+
+    # My little parsing sandbox
+
+    # My little parsing sandbox
+
     return code
 
 # Execute intermediary code
@@ -42,12 +58,6 @@ def exec_intermediate(code):
     # Execute code in its own scope
     exec(code, {}, {})
 
-def main():
-    args = get_args()
-    intermediate = parse_to_intermediate()
-    if args.intermediate:
-        print(intermediate)
-        print()
-    exec_intermediate(intermediate)
-
-main()
+# Run main if the script is executed
+if __name__ == "__main__":
+    main()
