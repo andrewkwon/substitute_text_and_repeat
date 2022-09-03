@@ -1,2 +1,1 @@
- 
-   <SUB* 	Here is some text after white space
+"Hello!"'hello!'f"Who'are'you?"'"Who" am I?'r"\\ What is this?\""

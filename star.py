@@ -61,7 +61,7 @@ def parse_to_intermediate():
     code += f'sys.stdout.buffer."write({source.encode()})'
 
     print("***PARSING SANDBOX***")
-    parser = sub_block
+    parser = string_literal.many() + parsy.whitespace.many()
     print(parser.parse(source))
     print("***PARSING SANDBOX***")
     print()
@@ -92,19 +92,28 @@ def sub_block():
 def rpt_block():
     pass
 
-# Generates a parser for a python non-multi-line string literal,
+# Generates a parser for a python single-line string literal,
 # For simplicity:
 # doesn't check that bytestrings only use ascii characters,
-# doesn't check for escape sequences other than the escaped quote,
-# Based on https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
+# doesn't check for escape sequences other than the escaped quote and slash,
+# Syntax from https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 @parsy.generate
 def string_literal():
     string_prefix = parsy.string_from("r", "u", "R", "U", "f", "F",
         "fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF")
     bytes_prefix = parsy.string_from("b", "B",
         "br", "Br", "bR", "BR", "rb", "rB", "Rb", "RB")
+    prefix = yield (string_prefix | bytes_prefix).optional().map(lambda x:'' if x is None else x).desc("string literal prefix")
 
-    pass
+    single_quoted = (parsy.string("'") +
+        (parsy.string(r"\'") | parsy.string(r"\\") | parsy.regex("[^'\n]")).many().concat() +
+        parsy.string("'"))
+    double_quoted = (parsy.string('"') +
+        (parsy.string(r'\"') | parsy.string(r'\\') | parsy.regex('[^"\n]')).many().concat() +
+        parsy.string('"'))
+    quoted = yield (single_quoted | double_quoted).desc("quoted string literal contents")
+
+    return prefix + quoted
 
 # Validate the syntax of the code string, returns a pair (valid bool, err error)
 def validate_syntax(code):
