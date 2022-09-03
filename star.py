@@ -9,19 +9,17 @@ def main():
     args = get_args()
     source = sys.stdin.read()
     # Parse the input source to an abstract syntax tree
-    astree = source_block.parse(source)
+    tree = source_block.parse(source)
     if args.ast:
         print("```ast")
-        pprint.pprint(astree, sort_dicts=False)
-        print("```")
-        print()
+        pprint.pprint(tree, sort_dicts=False)
+        print("```\n")
     # Compile the abstract syntax tree to intermediate code
-    intermediate = compile_to_intermediate(astree)
+    intermediate = compile_to_intermediate(tree)
     if args.intermediate:
         print("```python")
         print(intermediate)
-        print("```")
-        print()
+        print("```\n")
 
     (valid, err) = validate_syntax(intermediate)
     if valid:
@@ -128,12 +126,18 @@ def string_literal():
 
     return prefix + quoted
 
-# Compile input to generate intermediary code
-def compile_to_intermediate(astree):
-    # For now we're just echoing back the file contents
+# Compile abstract syntax tree to generate intermediary code
+def compile_to_intermediate(tree):
     code = 'import sys\n'
-    code += f'print({repr(None)})'
+    code += compile_source_node(tree, 0)
+    return code
 
+# Recursively compile a source node in an abstract syntax tree at a particular depth
+def compile_source_node(node, depth):
+    code = ''
+    for child in node['body']:
+        if child['id'] == 'TEXT':
+            code += f"print({repr(child['body'])})\n"
     return code
 
 # Validate the syntax of the code string, returns a pair (valid bool, err error)
