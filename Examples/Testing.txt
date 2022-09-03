@@ -1,1 +1,5 @@
-"Hello!"'hello!'f"Who'are'you?"'"Who" am I?'r"\\ What is this?\""
+Hello there!
+<SUB* 'hello' => 'goodbye', "$i"=>  f'{i}'>
+stuff
+<*SUB>
+Here we go!

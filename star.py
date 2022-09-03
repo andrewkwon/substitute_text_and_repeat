@@ -32,6 +32,7 @@ Parses input text marked with substitution and repetition commands to produce a 
 Text on which to perform substitution
 <*SUB>
 where the strings can be any string literals.
+Substitution rules are applied sequentially from left to right.
 
 Repeat commands are of the form
 <RPT* `init`; `condition`; `increment` | delimiter>
@@ -53,38 +54,47 @@ Each SUB or RPT element must be on its own line.''',
 # Parse input to generate intermediary code
 def parse_to_intermediate():
     source = sys.stdin.read()
-    # We expect each line to end with a new line character, so we add one where the input ends
-    source += '\n'
 
     # For now we're just echoing back the file contents
     code = 'import sys\n'
-    code += f'sys.stdout.buffer."write({source.encode()})'
+    code += f'sys.stdout.buffer.write({source.encode()})'
 
     print("***PARSING SANDBOX***")
-    parser = string_literal.many() + parsy.whitespace.many()
+    parser = source_block
     print(parser.parse(source))
     print("***PARSING SANDBOX***")
     print()
 
     return code
 
-# Generates a parser for a block of source, which is a sequence of blocks
+# Generates a parser for a block of source, which is a sequence of blocks and text lines
 @parsy.generate
 def source_block():
-    pass
+    result = yield (sub_block | text_line).sep_by(parsy.string('\n'))
+    return result
 
-# Generates a parser for a block of pure text
+# Generates a parser for a line of pure text
 @parsy.generate
-def text_block():
-    result = yield parsy.any_char.many().concat()
+def text_line():
+    ws = optional_whitespace()
+    closing_tag = ws >> parsy.string('<*SUB>') | ws >> parsy.string('<*RPT>')
+    result = yield closing_tag.should_fail('not closing tag') >> parsy.regex('[^\n]').many().concat()
     return result
 
 # Generates a parser for a substitution block surrounded by SUB tags
 @parsy.generate
 def sub_block():
-    ws = parsy.whitespace.optional()
+    ws = optional_whitespace()
+    # Open sub tag
     yield ws >> parsy.string('<SUB*')
-    result = yield parsy.any_char.many().concat()
+    sub_rule = ((ws >> string_literal).times(1) +
+        (ws >> parsy.string('=>') >> ws >> string_literal).times(1)).desc('substitution rule')
+    result = yield sub_rule.sep_by(parsy.string(','))
+    yield ws >> parsy.string('>') >> parsy.string('\n')
+    # Enclosed source block
+    result += yield source_block << parsy.string('\n')
+    # Close sub tag
+    yield ws >> parsy.string('<*SUB>')
     return result
 
 # Generates a parser for a repetition block surrounded by RPT tags
@@ -92,26 +102,30 @@ def sub_block():
 def rpt_block():
     pass
 
+# Returns a parser for optional whitespace
+def optional_whitespace():
+    return parsy.whitespace.optional().desc('optional whitespace')
+
 # Generates a parser for a python single-line string literal,
 # For simplicity:
 # doesn't check that bytestrings only use ascii characters,
 # doesn't check for escape sequences other than the escaped quote and slash,
 # Syntax from https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
-@parsy.generate
+@parsy.generate('python string literal')
 def string_literal():
     string_prefix = parsy.string_from("r", "u", "R", "U", "f", "F",
-        "fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF")
+        "fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF").desc('character string literal prefix')
     bytes_prefix = parsy.string_from("b", "B",
-        "br", "Br", "bR", "BR", "rb", "rB", "Rb", "RB")
-    prefix = yield (string_prefix | bytes_prefix).optional().map(lambda x:'' if x is None else x).desc("string literal prefix")
+        "br", "Br", "bR", "BR", "rb", "rB", "Rb", "RB").desc('byte string literal prefix (byte-string)')
+    prefix = yield (string_prefix | bytes_prefix | parsy.string('')).desc('string literal prefix')
 
     single_quoted = (parsy.string("'") +
         (parsy.string(r"\'") | parsy.string(r"\\") | parsy.regex("[^'\n]")).many().concat() +
-        parsy.string("'"))
+        parsy.string("'")).desc('single-quoted string literal contents')
     double_quoted = (parsy.string('"') +
         (parsy.string(r'\"') | parsy.string(r'\\') | parsy.regex('[^"\n]')).many().concat() +
-        parsy.string('"'))
-    quoted = yield (single_quoted | double_quoted).desc("quoted string literal contents")
+        parsy.string('"')).desc('double-quoted string literal contents')
+    quoted = yield (single_quoted | double_quoted).desc('quoted string literal contents')
 
     return prefix + quoted
 
