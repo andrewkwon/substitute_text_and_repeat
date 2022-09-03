@@ -1,0 +1,2 @@
+ 
+   <SUB* 	Here is some text after white space

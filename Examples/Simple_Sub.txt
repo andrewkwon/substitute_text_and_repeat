@@ -1,0 +1,13 @@
+Preamble
+<SUB* 'Earth' => 'World'>
+Hello Earth!
+<*SUB>
+Middle
+<SUB* 'Earth' => 'World', 'World' => 'Earth'>
+Hello Earth, and Hello World!
+<*SUB>
+Another Middle
+<SUB* 'result' => f'{1 + 2}'>
+The sum of 1 and 2 is result.
+<*SUB>
+Postamble

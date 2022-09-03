@@ -1,0 +1,4 @@
+Preamble
+<SUB* 'Earth => 'World'>
+Hello Earth!
+<*SUB>
