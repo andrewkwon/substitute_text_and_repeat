@@ -129,19 +129,25 @@ def string_literal():
 # Compile abstract syntax tree to generate intermediary code
 def compile_to_intermediate(tree):
     code = compile_source_node(tree, 0)
-    code += f"print(_star_source_{0})\n"
+    code += f"print(_STAR_source_{0})\n"
     return code
 
 # Recursively compile a source node in an abstract syntax tree at a particular depth,
-# Returns code which assigns a value to a string _star_source_<depth>
+# Returns code which assigns a value to a string _STAR_source_<depth>
 def compile_source_node(node, depth):
-    code = f"_star_source_{depth} = ''\n"
+    code = f"_STAR_source_{depth} = ''\n"
     for child in node['body']:
         if child['id'] == 'TEXT':
-            code += f"_star_source_{depth} += {repr(child['body'])} + '\\n'\n"
+            code += f"_STAR_source_{depth} += {repr(child['body'])} + '\\n'\n"
         elif child['id'] == 'SUB':
-            code += f"_star_sub_{depth} = 'SUB PLACEHOLDER\\n'\n"
-            code += f"_star_source_{depth} += _star_sub_{depth}\n"
+            code += f"_STAR_sub_{depth} = ''\n"
+            code += compile_source_node(child['body'], depth + 1)
+            code += f"_STAR_sub_{depth} = _STAR_source_{depth+1}\n"
+            for rule in child['rules']:
+                old = rule[0]
+                new = rule[1]
+                code += f"_STAR_sub_{depth} = _STAR_sub_{depth}.replace({old}, {new})\n"
+            code += f"_STAR_source_{depth} += _STAR_sub_{depth}\n"
     return code
 
 # Validate the syntax of the code string, returns a pair (valid bool, err error)

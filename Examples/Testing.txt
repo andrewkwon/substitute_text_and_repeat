@@ -1,6 +1,6 @@
 Hello there!
-<SUB* 'hello' => 'goodbye', "$i"=>  f'{i}'>
-stuff
+<SUB* 'hello' => 'goodbye', "bye"=>  'riddens'>
+hello you, hello and bye-bye
 <*SUB>
 Here we go!
 "Some stuff here" it's great stuff
