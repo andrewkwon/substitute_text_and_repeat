@@ -2,12 +2,21 @@ import argparse
 import sys
 import parsy
 import ast
+import pprint
 
 # Main function which gets called to run the script
 def main():
     args = get_args()
-    intermediate = parse_to_intermediate()
-    # If intermediate flag is set, print the intermediate python code
+    source = sys.stdin.read()
+    # Parse the input source to an abstract syntax tree
+    astree = source_block.parse(source)
+    if args.ast:
+        print("```ast")
+        pprint.pprint(astree, sort_dicts=False)
+        print("```")
+        print()
+    # Compile the abstract syntax tree to intermediate code
+    intermediate = compile_to_intermediate(astree)
     if args.intermediate:
         print("```python")
         print(intermediate)
@@ -46,56 +55,44 @@ The marked up input is used to generate intermediary python code which is execut
 Each SUB or RPT element must be on its own line.''',
         formatter_class=argparse.RawTextHelpFormatter
     )
+    argparser.add_argument('-a', '--ast', action='store_true',
+        help='output the generated abstract syntax tree parsed from the input source')
     argparser.add_argument('-i', '--intermediate', action='store_true',
         help='output intermediate python code prior to final output.')
 
     return argparser.parse_args()
 
-# Parse input to generate intermediary code
-def parse_to_intermediate():
-    source = sys.stdin.read()
-
-    # For now we're just echoing back the file contents
-    code = 'import sys\n'
-    code += f'sys.stdout.buffer.write({source.encode()})'
-
-    print("***PARSING SANDBOX***")
-    parser = source_block
-    print(parser.parse(source))
-    print("***PARSING SANDBOX***")
-    print()
-
-    return code
-
 # Generates a parser for a block of source, which is a sequence of blocks and text lines
 @parsy.generate
 def source_block():
-    result = yield (sub_block | text_line).sep_by(parsy.string('\n'))
-    return result
+    elements = yield (text_line | sub_block).sep_by(parsy.string('\n'))
+    return {'id': 'SOURCE', 'body': elements}
 
 # Generates a parser for a line of pure text
 @parsy.generate
 def text_line():
-    ws = optional_whitespace()
+    ws = optional_whitespace
+    opening_tag = ws >> parsy.string('<SUB*') | ws >> parsy.string('<RPT*')
     closing_tag = ws >> parsy.string('<*SUB>') | ws >> parsy.string('<*RPT>')
-    result = yield closing_tag.should_fail('not closing tag') >> parsy.regex('[^\n]').many().concat()
-    return result
+    not_tag = opening_tag.should_fail('not opening tag') >> closing_tag.should_fail('not closing tag')
+    text = yield not_tag >> parsy.regex('[^\n]').many().concat()
+    return {'id': 'TEXT', 'body': text}
 
 # Generates a parser for a substitution block surrounded by SUB tags
 @parsy.generate
 def sub_block():
-    ws = optional_whitespace()
+    ws = optional_whitespace
     # Open sub tag
     yield ws >> parsy.string('<SUB*')
     sub_rule = ((ws >> string_literal).times(1) +
         (ws >> parsy.string('=>') >> ws >> string_literal).times(1)).desc('substitution rule')
-    result = yield sub_rule.sep_by(parsy.string(','))
+    sub_rules = yield sub_rule.sep_by(parsy.string(','))
     yield ws >> parsy.string('>') >> parsy.string('\n')
     # Enclosed source block
-    result += yield source_block << parsy.string('\n')
+    body = yield source_block << parsy.string('\n')
     # Close sub tag
     yield ws >> parsy.string('<*SUB>')
-    return result
+    return {'id': 'SUB', 'rules': sub_rules, 'body': body}
 
 # Generates a parser for a repetition block surrounded by RPT tags
 @parsy.generate
@@ -103,8 +100,10 @@ def rpt_block():
     pass
 
 # Returns a parser for optional whitespace
+@parsy.generate('optional whitespace')
 def optional_whitespace():
-    return parsy.whitespace.optional().desc('optional whitespace')
+    ws = yield parsy.whitespace.optional()
+    return ws
 
 # Generates a parser for a python single-line string literal,
 # For simplicity:
@@ -128,6 +127,14 @@ def string_literal():
     quoted = yield (single_quoted | double_quoted).desc('quoted string literal contents')
 
     return prefix + quoted
+
+# Compile input to generate intermediary code
+def compile_to_intermediate(astree):
+    # For now we're just echoing back the file contents
+    code = 'import sys\n'
+    code += f'print({repr(None)})'
+
+    return code
 
 # Validate the syntax of the code string, returns a pair (valid bool, err error)
 def validate_syntax(code):
