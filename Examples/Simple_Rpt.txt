@@ -1,13 +1,13 @@
 Preamble
-<RPT* `i = 0`; `i < 3`; `i = i + 1` | '\n'>
+<RPT* `i = 0`| `i < 3`| `i = i + 1` | '\n'>
 Hello Earth!
 <*RPT>
 Middle
-<RPT* `i = 1`; `i < 16`; `i = i * 2` | ' And '>
+<RPT* `i = 1`| `i < 16` |`i = i * 2` | ' And '>
 Hello!
 <*RPT>
 Another Middle
-<RPT* `print('start of loop'); i = 0`; `i < 5`; `i = i + 1; print(f'i is now {i}')` | '\n'>
+<RPT* `_STAR_rpt_0 += 'start of loop\n'; i = 0` | `i < 5` | `i = i + 1; _STAR_rpt_0 += f'\ti is now {i}'` | '\n'>
 Now we're thinking with repeats.
 <*RPT>
 Postamble

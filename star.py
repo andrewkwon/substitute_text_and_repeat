@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import sys
 import parsy
@@ -42,7 +44,7 @@ where the strings can be any string literals.
 Substitution rules are applied sequentially from left to right.
 
 Repeat commands are of the form
-<RPT* `init`; `condition`; `update` | delimiter>
+<RPT* `init` | `condition` | `update` | delimiter>
 Text we want to repeat
 <*RPT>
 where init, condition, and update are all snippets of python code and the delimiter is any string literal.
@@ -50,7 +52,7 @@ The condition must be valid as a python while condition.
 
 The marked up input is used to generate intermediary python code which is executed to produce the final output.
 
-Each SUB or RPT element must be on its own line.''',
+Each SUB or RPT tag must be on its own line.''',
         formatter_class=argparse.RawTextHelpFormatter
     )
     argparser.add_argument('-a', '--ast', action='store_true',
@@ -99,8 +101,8 @@ def rpt_block():
     ws = optional_whitespace
     # Open rpt tag
     yield ws >> parsy.string('<RPT*')
-    init = yield ws >> (code_literal | parsy.string('')) << parsy.string(';')
-    cond = yield ws >> (condition_literal | parsy.string('')) << parsy.string(';')
+    init = yield ws >> (code_literal | parsy.string('')) << ws << parsy.string('|')
+    cond = yield ws >> (condition_literal | parsy.string('')) << ws << parsy.string('|')
     update = yield ws >> (code_literal | parsy.string('')) << ws << parsy.string('|')
     delimiter = yield ws >> string_literal
     yield ws >> parsy.string('>') >> parsy.string('\n')
@@ -184,7 +186,8 @@ def compile_source_node(node, depth, indent):
         elif child['id'] == 'SUB':
             sub_var = '_STAR_sub_'
             append_code(f"{sub_var}{depth} = ''")
-            append_code(compile_source_node(child['body'], depth + 1, indent))
+            # Don't indent already indented code
+            code += compile_source_node(child['body'], depth + 1, indent) + '\n'
             append_code(f"{sub_var}{depth} = {source_var}{depth+1}")
             for rule in child['rules']:
                 old = rule[0]
@@ -198,7 +201,8 @@ def compile_source_node(node, depth, indent):
             append_code(f"{delim_flag_var}{depth} = False")
             append_code(child['init'])
             append_code(f"while {child['cond']}:")
-            append_code(compile_source_node(child['body'], depth + 1, indent + 1))
+            # Don't indent already indented code
+            code += compile_source_node(child['body'], depth + 1, indent + 1) + '\n'
             append_code(f"    {source_var}{depth+1} = {source_var}{depth+1}.removesuffix('\\n')")
             append_code(f"    if {delim_flag_var}{depth}:")
             append_code(f"        {rpt_var}{depth} += {child['delimiter']}")
@@ -208,6 +212,7 @@ def compile_source_node(node, depth, indent):
             append_code(f"{source_var}{depth} += {rpt_var}{depth} + '\\n'")
         else:
             append_code(f"# {child['id']} abstract syntax tree node not recognized by compiler")
+    # Return code with last newline removed for better control over code formatting
     return code.removesuffix('\n')
 
 # Validate the syntax of the code string, returns a pair (valid bool, err error)
