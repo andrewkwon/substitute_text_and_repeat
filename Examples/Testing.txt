@@ -2,6 +2,13 @@ Hello there!
 	<SUB* 'hello' => 'goodbye', "bye"=>  'riddens', 'and' => f'{_STAR_sub_0}'>
 hello you, hello and bye-bye
 	<*SUB>
+
 Here we go!
+
+
 		\<SUB*> Here is an escaped SUB tag
 "Some stuff here" it's great stuff
+<RPT* ``i = 0``; `i < 3`; `i = i + 1` | ' And '>
+Hello Earth!
+<*RPT>
+Some Text

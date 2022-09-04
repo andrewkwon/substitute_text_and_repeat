@@ -42,10 +42,10 @@ where the strings can be any string literals.
 Substitution rules are applied sequentially from left to right.
 
 Repeat commands are of the form
-<RPT* `init`; `condition`; `increment` | delimiter>
+<RPT* `init`; `condition`; `update` | delimiter>
 Text we want to repeat
 <*RPT>
-where init, condition, and increment are all snippets of python code and the delimiter is any string literal.
+where init, condition, and update are all snippets of python code and the delimiter is any string literal.
 The condition must be valid as a python while condition.
 
 The marked up input is used to generate intermediary python code which is executed to produce the final output.
@@ -63,7 +63,7 @@ Each SUB or RPT element must be on its own line.''',
 # Generates a parser for a block of source, which is a sequence of blocks and text lines
 @parsy.generate
 def source_block():
-    elements = yield (text_line | sub_block).sep_by(parsy.string('\n'))
+    elements = yield (text_line | sub_block | rpt_block).sep_by(parsy.string('\n'))
     return {'id': 'SOURCE', 'body': elements}
 
 # Generates a parser for a line of pure text
@@ -96,12 +96,24 @@ def sub_block():
 # Generates a parser for a repetition block surrounded by RPT tags
 @parsy.generate
 def rpt_block():
-    pass
+    ws = optional_whitespace
+    # Open rpt tag
+    yield ws >> parsy.string('<RPT*')
+    init = yield ws >> (code_literal | parsy.string('')) << parsy.string(';')
+    cond = yield ws >> (condition_literal | parsy.string('')) << parsy.string(';')
+    update = yield ws >> (code_literal | parsy.string('')) << ws << parsy.string('|')
+    delimiter = yield ws >> string_literal
+    yield ws >> parsy.string('>') >> parsy.string('\n')
+    # Enclosed source block
+    body = yield source_block << parsy.string('\n')
+    # Close rpt tag
+    yield ws >> parsy.string('<*RPT>')
+    return {'id': 'RPT', 'init': init, 'cond': cond, 'update': update, 'delimiter': delimiter, 'body': body}
 
 # Generates a parser for optional whitespace
 @parsy.generate('optional whitespace')
 def optional_whitespace():
-    ws = yield parsy.whitespace | parsy.string('')
+    ws = yield (parsy.string('\n').should_fail('no new line') >> parsy.regex(r'[\s]')).many().concat()
     return ws
 
 # Generates a parser for a python single-line string literal,
@@ -128,36 +140,75 @@ def string_literal():
     return prefix + quoted
 
 # Generates a parser for a snippet of python code
-@parsy.generate('python code literal')
+@parsy.generate
 def code_literal():
     single_ticked = parsy.string('`') >> parsy.regex('[^`\n]').many().concat() << parsy.string('`')
     double_ticked = parsy.string('``') >> parsy.regex('[^`\n]|`(?!`)').many().concat() << parsy.string('``')
-    code = yield single_ticked | double_ticked
+    # Need to check for double tick first
+    code = yield double_ticked | single_ticked
+    (valid, err) = validate_syntax(code)
+    if not valid:
+        yield parsy.fail(f'code literal must be syntactically valid, but got {err.msg} in {err.text}')
+    return code
+
+# Generates a parser for a python while condition
+@parsy.generate
+def condition_literal():
+    code = yield code_literal
+    code_in_while = f'while({code}):\n\tpass'
+    (valid, err) = validate_syntax(code_in_while)
+    if not valid:
+        yield parsy.fail(f'condition literal must be syntactically valid as a while condition, but got {err.msg} in {err.text}')
     return code
 
 # Compile abstract syntax tree to generate intermediary code
 def compile_to_intermediate(tree):
-    code = compile_source_node(tree, depth=0)
+    code = compile_source_node(tree, depth=0, indent=0) + '\n'
     code += f"print(_STAR_source_{0})\n"
     return code
 
-# Recursively compile a source node in an abstract syntax tree at a particular depth,
+# Recursively compile a source node in an abstract syntax tree at a particular depth and indentation level,
 # Returns code which assigns a value to a string _STAR_source_<depth>
-def compile_source_node(node, depth):
-    code = f"_STAR_source_{depth} = ''\n"
+def compile_source_node(node, depth, indent):
+    code = ''
+    # Add a line of code, format the line for indentation and end with a new line character
+    def append_code(code_line):
+        nonlocal code, indent
+        code += f"{' '*4*indent}{code_line}\n"
+
+    source_var = '_STAR_source_'
+    append_code(f"{source_var}{depth} = ''")
     for child in node['body']:
         if child['id'] == 'TEXT':
-            code += f"_STAR_source_{depth} += {repr(child['body'])} + '\\n'\n"
+            append_code(f"{source_var}{depth} += {repr(child['body'])} + '\\n'")
         elif child['id'] == 'SUB':
-            code += f"_STAR_sub_{depth} = ''\n"
-            code += compile_source_node(child['body'], depth + 1)
-            code += f"_STAR_sub_{depth} = _STAR_source_{depth+1}\n"
+            sub_var = '_STAR_sub_'
+            append_code(f"{sub_var}{depth} = ''")
+            append_code(compile_source_node(child['body'], depth + 1, indent))
+            append_code(f"{sub_var}{depth} = {source_var}{depth+1}")
             for rule in child['rules']:
                 old = rule[0]
                 new = rule[1]
-                code += f"_STAR_sub_{depth} = _STAR_sub_{depth}.replace({old}, {new})\n"
-            code += f"_STAR_source_{depth} += _STAR_sub_{depth}\n"
-    return code
+                append_code(f"{sub_var}{depth} = {sub_var}{depth}.replace({old}, {new})")
+            append_code(f"{source_var}{depth} += {sub_var}{depth}")
+        elif child['id'] == 'RPT':
+            rpt_var = '_STAR_rpt_'
+            delim_flag_var = '_STAR_rpt_delim_'
+            append_code(f"{rpt_var}{depth} = ''")
+            append_code(f"{delim_flag_var}{depth} = False")
+            append_code(child['init'])
+            append_code(f"while {child['cond']}:")
+            append_code(compile_source_node(child['body'], depth + 1, indent + 1))
+            append_code(f"    {source_var}{depth+1} = {source_var}{depth+1}.removesuffix('\\n')")
+            append_code(f"    if {delim_flag_var}{depth}:")
+            append_code(f"        {rpt_var}{depth} += {child['delimiter']}")
+            append_code(f"    {rpt_var}{depth} += {source_var}{depth+1}")
+            append_code(f"    {child['update']}")
+            append_code(f"    {delim_flag_var}{depth} = True")
+            append_code(f"{source_var}{depth} += {rpt_var}{depth} + '\\n'")
+        else:
+            append_code(f"# {child['id']} abstract syntax tree node not recognized by compiler")
+    return code.removesuffix('\n')
 
 # Validate the syntax of the code string, returns a pair (valid bool, err error)
 def validate_syntax(code):

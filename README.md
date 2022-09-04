@@ -9,7 +9,7 @@ For more examples, see the Examples directory in this git repo.
 
 ## How to Use STAR
 
-STAR runs with python3.
+STAR runs with python3. It specifically uses features of python 3.9.0.
 
 STAR uses parsy for its parsing. It was developed with parsy-1.4.0 in particular. You can install parsy with pip:
 ```sh
