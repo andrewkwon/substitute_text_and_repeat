@@ -1,6 +1,7 @@
 Hello there!
-<SUB* 'hello' => 'goodbye', "bye"=>  'riddens'>
+	<SUB* 'hello' => 'goodbye', "bye"=>  'riddens', 'and' => f'{_STAR_sub_0}'>
 hello you, hello and bye-bye
-<*SUB>
+	<*SUB>
 Here we go!
+		\<SUB*> Here is an escaped SUB tag
 "Some stuff here" it's great stuff

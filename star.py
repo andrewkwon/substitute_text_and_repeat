@@ -70,10 +70,11 @@ def source_block():
 @parsy.generate
 def text_line():
     ws = optional_whitespace
-    opening_tag = ws >> parsy.string('<SUB*') | ws >> parsy.string('<RPT*')
-    closing_tag = ws >> parsy.string('<*SUB>') | ws >> parsy.string('<*RPT>')
-    not_tag = opening_tag.should_fail('not opening tag') >> closing_tag.should_fail('not closing tag')
-    text = yield not_tag >> parsy.regex('[^\n]').many().concat()
+    opening_tag = parsy.string('<SUB*') | parsy.string('<RPT*')
+    closing_tag = parsy.string('<*SUB>') | parsy.string('<*RPT>')
+    not_tag = parsy.peek(ws >> opening_tag.should_fail('not opening tag') >> closing_tag.should_fail('not closing tag'))
+    escaped_tag = parsy.string('\\') >> (opening_tag | closing_tag)
+    text = yield not_tag >> (ws + (escaped_tag | parsy.string('')) + parsy.regex('[^\n]').many().concat())
     return {'id': 'TEXT', 'body': text}
 
 # Generates a parser for a substitution block surrounded by SUB tags
@@ -97,10 +98,10 @@ def sub_block():
 def rpt_block():
     pass
 
-# Returns a parser for optional whitespace
+# Generates a parser for optional whitespace
 @parsy.generate('optional whitespace')
 def optional_whitespace():
-    ws = yield parsy.whitespace.optional()
+    ws = yield parsy.whitespace | parsy.string('')
     return ws
 
 # Generates a parser for a python single-line string literal,
@@ -113,7 +114,7 @@ def string_literal():
     string_prefix = parsy.string_from("r", "u", "R", "U", "f", "F",
         "fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF").desc('character string literal prefix')
     bytes_prefix = parsy.string_from("b", "B",
-        "br", "Br", "bR", "BR", "rb", "rB", "Rb", "RB").desc('byte string literal prefix (byte-string)')
+        "br", "Br", "bR", "BR", "rb", "rB", "Rb", "RB").desc('byte string literal prefix')
     prefix = yield (string_prefix | bytes_prefix | parsy.string('')).desc('string literal prefix')
 
     single_quoted = (parsy.string("'") +
@@ -128,7 +129,7 @@ def string_literal():
 
 # Compile abstract syntax tree to generate intermediary code
 def compile_to_intermediate(tree):
-    code = compile_source_node(tree, 0)
+    code = compile_source_node(tree, depth=0)
     code += f"print(_STAR_source_{0})\n"
     return code
 
