@@ -127,6 +127,14 @@ def string_literal():
 
     return prefix + quoted
 
+# Generates a parser for a snippet of python code
+@parsy.generate('python code literal')
+def code_literal():
+    single_ticked = parsy.string('`') >> parsy.regex('[^`\n]').many().concat() << parsy.string('`')
+    double_ticked = parsy.string('``') >> parsy.regex('[^`\n]|`(?!`)').many().concat() << parsy.string('``')
+    code = yield single_ticked | double_ticked
+    return code
+
 # Compile abstract syntax tree to generate intermediary code
 def compile_to_intermediate(tree):
     code = compile_source_node(tree, depth=0)
