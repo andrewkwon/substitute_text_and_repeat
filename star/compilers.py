@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Compile abstract syntax tree to generate intermediary code
 def compile_to_intermediate(tree):
     code = compile_source_node(tree, depth=0, indent=0) + '\n'

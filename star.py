@@ -2,6 +2,7 @@
 
 import star.parsers
 import star.compilers
+import star.executors
 import argparse
 import sys
 import pprint
@@ -25,7 +26,7 @@ def main():
 
     (valid, err) = star.parsers.validate_syntax(intermediate)
     if valid:
-        exec_intermediate(intermediate)
+        star.executors.exec_intermediate(intermediate)
     else:
         print('The generated intermediate code had a syntax error:')
         print(f'{err.msg} at line {err.lineno}, column {err.offset}')
@@ -61,11 +62,6 @@ Each SUB or RPT tag must be on its own line.''',
         help='output intermediate python code prior to final output.')
 
     return argparser.parse_args()
-
-# Execute intermediary code
-def exec_intermediate(code):
-    # Execute code in its own scope
-    exec(code, {}, {})
 
 # Run main if the script is executed
 if __name__ == "__main__":

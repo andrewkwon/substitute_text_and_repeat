@@ -1,0 +1,6 @@
+Here are the first 10 rows of Pascal's triangle. The numbers in each row can be computed by taking the sum of the number above with the number above and to the right.
+<RPT* `i = 0; row = [1]` | `i < 10` | `i += 1; row = [sum(pair) for pair in zip(row + [0], [0] + row)]` | '\n'>
+<SUB* '.' => f'{row}'>
+.
+<*SUB>
+<*RPT>
