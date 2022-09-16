@@ -43,7 +43,7 @@ def compile_source_node(node, depth, indent):
             append_code(f"{delim_flag_var}{depth} = False")
             append_code(child['init'])
             append_code(f"while {child['cond']}:")
-            append_code(compile_source_node(child['body'], depth + 1, indent + 1))
+            append_code(f"    " + compile_source_node(child['body'], depth + 1, indent + 1))
             append_code(f"    {source_var}{depth+1} = {source_var}{depth+1}")
             append_code(f"    if {delim_flag_var}{depth}:")
             append_code(f"        {rpt_var}{depth} += {child['delimiter']}")
