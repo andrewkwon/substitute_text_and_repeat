@@ -42,7 +42,7 @@ Parses input text marked with substitution and repetition commands to produce a 
 Text on which to perform substitution
 <*SUB>
 where the strings can be any string literals.
-Substitution rules are applied sequentially from left to right.
+Substitution rules are applied to the enclosed text sequentially. i.e. the first rule is applied to the whole text, then the second, then the third and so on.
 
 Repeat commands are of the form
 <RPT* `init` | `condition` | `update` | delimiter>
