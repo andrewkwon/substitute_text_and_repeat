@@ -2,7 +2,7 @@
 def compile_to_intermediate(tree):
     builder = CodeBuilder(depth=0, indent=0)
     code = builder.compile_source_node(tree) + '\n'
-    code += f"print({CodeBuilder.source_var}{0})"
+    code += f"print({CodeBuilder.source_var}{0}, end='')"
     return code
 
 # Builds a block of intermediate code
@@ -24,23 +24,29 @@ class CodeBuilder:
         # The first line is indented by the caller
         self.code = f"# Begin code at depth {self.depth} with indentation level {self.indent}\n"
         self.append(f"{self.source_var}{self.depth} = ''")
+
         add_new_line = False
         for child in node['body']:
-            # Separate each child's output string by a new line
+            # Separate each child's output string by a new line when appropriate
             if add_new_line:
                 self.append(f"{self.source_var}{self.depth} += '\\n'")
-            else:
-                add_new_line = True
 
             # Append code based on the child type
             if child['id'] == 'TEXT':
                 self.append_compiled_text_node(child)
+                add_new_line = True
             elif child['id'] == 'SUB':
                 self.append_compiled_sub_node(child)
+                add_new_line = True
             elif child['id'] == 'RPT':
                 self.append_compiled_rpt_node(child)
+                add_new_line = True
+            elif child['id'] == 'PY':
+                self.append_compiled_py_node(child)
+                add_new_line = False
             else:
                 self.append(f"# {child['id']} abstract syntax tree node not recognized by compiler")
+                add_new_line = False
 
         # The last line doesn't end with a new line, the caller can add it if necessary
         self.code += f"{' '*4*self.indent}# End code at depth {self.depth} with indentation level {self.indent}"
@@ -80,3 +86,13 @@ class CodeBuilder:
         self.append(f"    {node['update']}")
         self.append(f"    {delim_flag_var}{self.depth} = True")
         self.append(f"{self.source_var}{self.depth} += {rpt_var}{self.depth}")
+
+    # Compiles a py node and appends to the builder
+    def append_compiled_py_node(self, node):
+        py_var = '_STAR_py_'
+        self.append(f"{py_var}{self.depth} = ''")
+        builder = CodeBuilder(self.depth + 1, self.indent)
+        self.append(builder.compile_source_node(node['body']))
+        self.append(f"{py_var}{self.depth} = {self.source_var}{self.depth+1}")
+        # Execute block, pass in the global scope
+        self.append(f"exec({py_var}{self.depth}, globals())")
