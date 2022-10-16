@@ -11,19 +11,23 @@ Let's roll some dice!
 I have 2 dice, so the results I could get are as follows:
 
 <RPT* `i = 1` | `i <= 6` | `i = i + 1` | '\n'>
-	<RPT* `j = 1` | `j <= 6` | `j = j + 1` | ', '>
-		<SUB* 'result' => f'({i}, {j})', 'sum' => f'{i + j}'>
+ <RPT* `j = 1` | `j <= 6` | `j = j + 1` | ', '>
+  <SUB* 'result' => f'({i}, {j})', 'sum' => f'{i + j}'>
 result -> sum
-		<*SUB>
-	<*RPT>
+  <*SUB>
+ <*RPT>
 <*RPT>
 
 Let's give them a roll!
-<RPT* `once = True; import random; roll = (random.randint(1,6), random.randint(1,6))` | `once` | `once = False` | ''>
-	<SUB* 'roll' => f'{roll}', 'sum' => f'{roll[0] + roll[1]}'>
+<PY*>
+import random
+def roll():
+	return random.randint(1,6)
+rolls = (roll(), roll())
+<*PY>
+<SUB* 'roll' => f'{rolls}', 'sum' => f'{rolls[0] + rolls[1]}'>
 roll -> sum
-	<*SUB>
-<*RPT>
+<*SUB>
 ```
 
 Then STAR will produce the following output (or something similar anyways, the random roll may be different between executions)

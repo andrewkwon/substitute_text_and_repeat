@@ -37,23 +37,30 @@ def get_args():
     argparser = argparse.ArgumentParser(
         description='''Substitute Text and Repeat (STAR)
 Parses input text marked with substitution and repetition commands to produce a formatted output.''',
-        epilog='''Substitute commands are of the form:
+        epilog='''Substitute blocks are of the form:
 <SUB* 'old_string_1' => 'new_string', 'old_string_2' => f'f-string', f'old_f_string' => 'new_string_2'>
 Text on which to perform substitution
 <*SUB>
-where the strings can be any string literals.
+where the strings can be any python string literals.
 Substitution rules are applied to the enclosed text sequentially. i.e. the first rule is applied to the whole text, then the second, then the third and so on.
 
-Repeat commands are of the form
+Repeat blocks are of the form
 <RPT* `init` | `condition` | `update` | delimiter>
 Text we want to repeat
 <*RPT>
 where init, condition, and update are all snippets of python code and the delimiter is any string literal.
 The condition must be valid as a python while condition.
 
+Python blocks are of the form
+<PY*>
+Python code we want to execute
+<*PY>
+
 The marked up input is used to generate intermediary python code which is executed to produce the final output.
 
-Each SUB or RPT tag must be on its own line.''',
+Each SUB, RPT, or PY tag must be on its own line.
+
+All blocks can be nested.''',
         formatter_class=argparse.RawTextHelpFormatter
     )
     argparser.add_argument('-a', '--ast', action='store_true',
