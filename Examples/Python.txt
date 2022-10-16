@@ -1,0 +1,12 @@
+<PY*>
+ <RPT* `i = 0; texts = ['hello', 'world']` | `i < len(texts)` | `i += 1` | '\n'>
+  <SUB* '<text>' => f'{texts[i]}'>
+def print_<text>():
+	print('<text>')
+  <*SUB>
+ <*RPT>
+<*PY>
+<PY*>
+print_hello()
+print_world()
+<*PY>

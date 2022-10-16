@@ -4,15 +4,15 @@ import ast
 # Generates a parser for a block of source, which is a sequence of blocks and text lines
 @parsy.generate
 def source_block():
-    elements = yield (text_line | sub_block | rpt_block).sep_by(parsy.string('\n'))
+    elements = yield (text_line | sub_block | rpt_block | py_block).sep_by(parsy.string('\n'))
     return {'id': 'SOURCE', 'body': elements}
 
 # Generates a parser for a line of pure text
 @parsy.generate
 def text_line():
     ws = optional_whitespace
-    opening_tag = parsy.string('<SUB*') | parsy.string('<RPT*')
-    closing_tag = parsy.string('<*SUB>') | parsy.string('<*RPT>')
+    opening_tag = parsy.string('<SUB*') | parsy.string('<RPT*') | parsy.string('<PY*')
+    closing_tag = parsy.string('<*SUB>') | parsy.string('<*RPT>') | parsy.string('<*PY>')
     not_tag = parsy.peek(ws >> opening_tag.should_fail('not opening tag') >> closing_tag.should_fail('not closing tag'))
     escaped_tag = parsy.string('\\') >> (opening_tag | closing_tag)
     text = yield not_tag >> (ws + (escaped_tag | parsy.string('')) + parsy.regex('[^\n]').many().concat())
@@ -50,6 +50,19 @@ def rpt_block():
     # Close rpt tag
     yield ws >> parsy.string('<*RPT>')
     return {'id': 'RPT', 'init': init, 'cond': cond, 'update': update, 'delimiter': delimiter, 'body': body}
+
+# Generates a parser for a python block surrounded by PY tags
+@parsy.generate
+def py_block():
+    ws = optional_whitespace
+    # Open py tag
+    yield ws >> parsy.string('<PY*')
+    yield ws >> parsy.string('>') >> parsy.string('\n')
+    # Enclosed source block
+    body = yield source_block << parsy.string('\n')
+    # Close py tag
+    yield ws >> parsy.string('<*PY>')
+    return {'id': 'PY', 'body': body}
 
 # Generates a parser for optional whitespace
 @parsy.generate('optional whitespace')
